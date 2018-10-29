@@ -20,7 +20,7 @@ all: $(all_TARGET)
 
 example.exe: $(example_OBJS) 
 
-example.obj: example.cpp agano.h
+example.obj: example.cpp agano.h whReserved.h whDllFunction.hxx 
 agano.obj: agano.cpp agano.h
 
 clean: clean_emacsbackup
