@@ -7,6 +7,7 @@
 #include <iostream>
 #include <locale>
 #include <array>
+#include <atomic>
 #include <thread>
 
 #include <cassert>
@@ -15,6 +16,7 @@
 #include "agano.h"
 #include "whReserved.h"
 #include "whDllFunction.hxx"
+#include "debug_window.h"
 
 #pragma comment( lib , "kernel32.lib" )
 #pragma comment( lib , "advapi32.lib" )
@@ -40,7 +42,15 @@ struct MainThreadArgument{
   int result;
 };
 
-static int mainThread(MainThreadArgument *ptr){
+
+static int application_thread( MainThreadArgument *ptr )
+{
+  assert( ptr );
+  return (ptr->result = EXIT_SUCCESS);
+}
+
+static int debug_thread(MainThreadArgument *ptr){
+  
   assert( ptr );
   using agano::EditRegion;
 
@@ -62,6 +72,7 @@ static int mainThread(MainThreadArgument *ptr){
   MessageBox( NULL,static_cast<std::wstring>( el ).c_str()  , TEXT("メッセージキャプション" ), MB_OK );
   return (ptr->result = EXIT_SUCCESS);
 }
+
 
 int main(int,char*[])
 {
@@ -106,71 +117,77 @@ int main(int,char*[])
   // ここまできたら、CRT の設定開始
   std::locale::global( std::locale("") ); /* ローケルの設定 */
   VERIFY( -1 != _set_error_mode(_OUT_TO_MSGBOX) ); 
-  
+
+  // COMの宣言
   HRESULT const hr = CoInitializeEx( NULL , COINIT_MULTITHREADED );
   assert( S_OK == hr );
   if( S_OK != hr ){
     return 3;
-  }else{
-    struct CoUninit{
-      ~CoUninit(){
-        CoUninitialize();
-      }
-    };
-    CoUninit coUninit{};
-
-    { // コモンコントロールの DLL 群を読み込む 
-      INITCOMMONCONTROLSEX init_commonctrls =
-        { sizeof( INITCOMMONCONTROLSEX ),
-          ICC_WIN95_CLASSES };
-      if( ! InitCommonControlsEx(&init_commonctrls) ){
-        return 3;
-      }
+  }
+  
+  struct CoUninit{
+    ~CoUninit(){
+      CoUninitialize();
     }
-
-    HWND debugWindow{ NULL }; // debug コンソールウィンドウ
-    (void)(debugWindow);
-    
-    if( debugWindow ){
-      MainThreadArgument mainThreadArgument{};
-      std::thread main_thread{ [](MainThreadArgument* arg)->int{
-                                 HRESULT const hr = CoInitializeEx( NULL , COINIT_APARTMENTTHREADED );
-                                 assert( S_OK == hr );
-                                 if( S_OK == hr ){
-                                   CoUninit coUninit{};
-                                   return mainThread(arg);
-                                 }
-                                 return 3;
-                               } , &mainThreadArgument };
-      HANDLE main_thread_handle{ main_thread.native_handle() };
-      if( main_thread_handle ){
-        for(;;){
-          std::array<HANDLE,1> handles = { main_thread_handle };
-          
-          static_assert( ((std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS-1)),
-                         "((std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS-1))" );
-          
-          DWORD const dw = MsgWaitForMultipleObjects( std::tuple_size<decltype(handles)>::value ,  handles.data(),
-                                                      FALSE , INFINITE , QS_ALLINPUT );
-          switch( dw ){
-          case WAIT_OBJECT_0:
-            main_thread.join();
-            goto end_of_message_loop;
-          case (WAIT_OBJECT_0 + std::tuple_size<decltype( handles )>::value) :
-            // TODO : message pump;
-            continue;
-          case (WAIT_TIMEOUT):
-            continue;
-          case 0xFFFFFFFF: // error 
-            goto end_of_message_loop;
-          default:
-            goto end_of_message_loop;
-          }
-        }
-      }
-    end_of_message_loop:
-      return mainThreadArgument.result;
+  };
+  CoUninit coUninit{};
+  
+  { // コモンコントロールの DLL 群を読み込む 
+    INITCOMMONCONTROLSEX init_commonctrls =
+      { sizeof( INITCOMMONCONTROLSEX ),
+        ICC_WIN95_CLASSES };
+    if( ! InitCommonControlsEx(&init_commonctrls) ){
+      return 3;
     }
+  }
+  
+  MainThreadArgument mainThreadArgument{};
+  std::thread main_thread{ [](MainThreadArgument* arg)->int{
+                             HRESULT const hr = CoInitializeEx( NULL , COINIT_APARTMENTTHREADED );
+                             assert( S_OK == hr );
+                             if( S_OK == hr ){
+                               CoUninit coUninit{};
+                               return debug_thread(arg);
+                             }
+                             return 3;
+                           } , &mainThreadArgument };
+  HANDLE main_thread_handle{ main_thread.native_handle() };
+  
+  if(! main_thread_handle ){
     return 3;
   }
+  
+  for(;;){
+    std::array<HANDLE,1> handles = { main_thread_handle };
+    
+    static_assert( ((std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS-1)),
+                   "((std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS-1))" );
+    
+    DWORD const dw = MsgWaitForMultipleObjects( std::tuple_size<decltype(handles)>::value ,  handles.data(),
+                                                FALSE , INFINITE , QS_ALLINPUT );
+    switch( dw ){
+    case WAIT_OBJECT_0:
+      main_thread.join();
+      goto end_of_message_loop;
+    case (WAIT_OBJECT_0 + std::tuple_size<decltype( handles )>::value) :
+      { // TODO : message pump;
+        for( MSG msg = {0}; PeekMessage(&msg , NULL , 0 ,0 , PM_REMOVE ) ; msg = {0} ){
+          if( WM_QUIT == msg.message ){
+            goto end_of_message_loop;
+          }
+          VERIFY(TranslateMessage( &msg ));
+          VERIFY(DispatchMessage( &msg ));
+        }
+      }
+      continue;
+    case (WAIT_TIMEOUT):
+      continue;
+    case 0xFFFFFFFF: // error 
+      goto end_of_message_loop;
+    default:
+      goto end_of_message_loop;
+    }
+  }
+ end_of_message_loop:
+  return mainThreadArgument.result;
 }

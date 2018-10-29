@@ -11,7 +11,7 @@ CXXOPT=-nologo -EHsc -W4 -WX -O2 -Zi -GS -MDd -Zc:wchar_t -Zc:forScope \
 
 VC_PDBFILE=vc140.pdb
 all_TARGET=example.exe
-example_OBJS=example.obj agano.obj
+example_OBJS=example.obj debug_window.obj agano.obj
 
 clean_TARGET=$(all_TARGET) $(all_TARGET:.exe=.pdb) $(all_TARGET:.exe=.ilk) $(example_OBJS)
 
@@ -20,7 +20,8 @@ all: $(all_TARGET)
 
 example.exe: $(example_OBJS) 
 
-example.obj: example.cpp agano.h whReserved.h whDllFunction.hxx 
+example.obj: example.cpp agano.h whReserved.h whDllFunction.hxx debug_window.h
+debug_window.obj: debug_window.cpp debug_window.h
 agano.obj: agano.cpp agano.h
 
 clean: clean_emacsbackup
