@@ -33,6 +33,7 @@
 
 *.ilk
 *.pdb
+*.exe.manifest
 
 **/*~
 
