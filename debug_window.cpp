@@ -1,6 +1,5 @@
 ﻿#include "winapi.h"
 
-#include <thread>
 #include "debug_window.h"
 
 namespace debug {

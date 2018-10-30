@@ -24,7 +24,17 @@
 
 #if defined( __cplusplus )
 #include <cassert>
+#include <iostream>
 #include <locale>
+
+#include <algorithm>
+#include <utility>
+#include <functional>
+#include <type_traits>
+
+#include <thread>
+#include <mutex>
+
 #else /* defined( __cplusplus ) */
 #include <assert.h>
 #endif /* defined( __cplusplus ) */

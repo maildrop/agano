@@ -2,12 +2,8 @@
 
 #include <memory.h>
 
-#include <iostream>
 #include <array>
 #include <atomic>
-#include <thread>
-#include <functional>
-#include <algorithm>
 
 #include <cassert>
 #include <cstdint>
