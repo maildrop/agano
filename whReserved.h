@@ -1,19 +1,29 @@
-/**
+ï»¿/**
    WindowsHelperLibrary:whReserved.h
-   —\–ñ’è‹`ƒwƒbƒ_ƒtƒ@ƒCƒ‹
- */
+   äºˆç´„å®šç¾©ãƒ˜ãƒƒãƒ€ãƒ•ã‚¡ã‚¤ãƒ«
 
+   Windows Helper series.
+ */
+#pragma once
 #ifndef WH_RESERVED_H
 #define WH_RESERVED_H 1
 
-/* Windows API ‚Å NULL ‚ğw’è‚³‚ê‚Ä‚¢‚éˆø”  */
+/* Windows API ã§ NULL ã‚’æŒ‡å®šã•ã‚Œã¦ã„ã‚‹å¼•æ•°  */
 #ifndef RESERVED_ARG_PTR
+#if defined(__cplusplus)
+#define RESERVED_ARG_PTR (nullptr)
+#else /* defined(__cplusplus) */
 #define RESERVED_ARG_PTR (NULL)
+#endif /* defined(__cplusplus) */
 #endif /* RESERVED_ARG_PTR */
 
-/* Windows API ‚Å 0 ‚ğw’è‚³‚ê‚Ä‚¢‚éˆø” */
+/* Windows API ã§ 0 ã‚’æŒ‡å®šã•ã‚Œã¦ã„ã‚‹å¼•æ•° */
 #ifndef RESERVED_ARG_DWORD 
+#if defined(__cplusplus)
+#define RESERVED_ARG_DWORD (static_cast<DWORD>(0))
+#else /* defined(__cplusplus) */
 #define RESERVED_ARG_DWORD (0)
+#endif /* defined(__cplusplus) */
 #endif /* RESERVED_ARG_DWORD */
 
 #endif /* WH_RESERVED_H */

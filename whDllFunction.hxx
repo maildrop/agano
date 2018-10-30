@@ -1,13 +1,18 @@
-/**
-
+ï»¿/**
+   whDllFunction.hxx 
+   æ˜ç¤ºçš„ãƒªãƒ³ã‚¯ã‚’å‡¦ç†ã™ã‚‹ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆã‚¯ãƒ©ã‚¹
+   
+   Windows Helper series.
+   
  */
+#pragma once
 #include "whReserved.h"
 
 #ifndef WH_DLLFUNCTION_HXX
 #define WH_DLLFUNCTION_HXX
 
-/* Windows 7, Windows Server 2008 R2, Windows Vista, and Windows Server 2008 ‚Ì KB2533623 “K—p‚·‚é‚Æ—LŒø‚É‚È‚éƒtƒ‰ƒO */
-/* ‚±‚ê‚Í SDK version 7.1A ‚É‚Í“ü‚Á‚Ä‚¢‚È‚¢‚Ì‚ÅAè‘O‚Å’è‹`‚ğ‚©‚¯‚é */
+/* Windows 7, Windows Server 2008 R2, Windows Vista, and Windows Server 2008 ã® KB2533623 é©ç”¨ã™ã‚‹ã¨æœ‰åŠ¹ã«ãªã‚‹ãƒ•ãƒ©ã‚° */
+/* ã“ã‚Œã¯ SDK version 7.1A ã«ã¯å…¥ã£ã¦ã„ãªã„ã®ã§ã€æ‰‹å‰ã§å®šç¾©ã‚’ã‹ã‘ã‚‹ */
 #ifndef LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
 #define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR (0x00000100)
 #endif /* LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR */
@@ -51,7 +56,7 @@ namespace wh{
       module = NULL;
       return retval;
     }
-    /* ƒeƒ“ƒvƒŒ[ƒg‚Ì“Áê‰»‚ğs‚¢ GetModuleHandle ‚Æ ‚È‚É‚à‚µ‚È‚¢ ‚ğg‚¤‚æ‚¤‚É‚·‚é */
+    /* ãƒ†ãƒ³ãƒ—ãƒ¬ãƒ¼ãƒˆã®ç‰¹æ®ŠåŒ–ã‚’è¡Œã„ GetModuleHandle ã¨ ãªã«ã‚‚ã—ãªã„ ã‚’ä½¿ã†ã‚ˆã†ã«ã™ã‚‹ */
     template<> inline HMODULE getHModule<0>( const TCHAR *dll_name ){
       return (module = ::GetModuleHandle( dll_name ));
     }
@@ -61,7 +66,7 @@ namespace wh{
     }
     
   public:
-    // ‚±‚ê–{“–‚ÍƒRƒ“ƒXƒgƒ‰ƒNƒ^‚Å—áŠO”ò‚Î‚·‚æ‚¤‚É‚µ‚½‚Ù‚¤‚ª‚¢‚¢‚Æv‚¤‚ñ‚¾‚æ‚ËB
+    // ã“ã‚Œæœ¬å½“ã¯ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ã§ä¾‹å¤–é£›ã°ã™ã‚ˆã†ã«ã—ãŸã»ã†ãŒã„ã„ã¨æ€ã†ã‚“ã ã‚ˆã­ã€‚
     ScopedDllFunction( const TCHAR *const dll_name , const char* const function_name):module(NULL),function_ptr( nullptr ){
       module = getHModule<USELOADLIBRARY>(dll_name);
       if( module != NULL ){
@@ -86,13 +91,13 @@ namespace wh{
       return function_ptr;
     }
   private:
-    /* ƒRƒs[ƒRƒ“ƒXƒgƒ‰ƒNƒ^‚Ì‹Ö~ */
+    /* ã‚³ãƒ”ãƒ¼ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿ã®ç¦æ­¢ */
     ScopedDllFunction( const ScopedDllFunction &);
-    /* ƒRƒs[‹Ö~ */
+    /* ã‚³ãƒ”ãƒ¼ç¦æ­¢ */
     const ScopedDllFunction& operator = ( const ScopedDllFunction &);
   };
 
-  /* ƒT[ƒ`ƒpƒX‚©‚çƒJƒŒƒ“ƒgƒ[ƒLƒ“ƒOƒfƒBƒŒƒNƒgƒŠ‚ğ”rœ‚·‚é */
+  /* ã‚µãƒ¼ãƒãƒ‘ã‚¹ã‹ã‚‰ã‚«ãƒ¬ãƒ³ãƒˆãƒ¯ãƒ¼ã‚­ãƒ³ã‚°ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’æ’é™¤ã™ã‚‹ */
   inline BOOL LibraryPathExcludeCurrentWorkingDirectory(){
     ScopedDllFunction< decltype(SetDllDirectoryW) , 0 , 0 > setDllDirectoryW( _T("kernel32.dll"), "SetDllDirectoryW");
     if( setDllDirectoryW ){
