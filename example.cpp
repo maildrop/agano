@@ -46,12 +46,6 @@ struct MainThreadArgument{
 static int application_thread( MainThreadArgument *ptr )
 {
   assert( ptr );
-  return (ptr->result = EXIT_SUCCESS);
-}
-
-static int debug_thread(MainThreadArgument *ptr){
-  
-  assert( ptr );
   using agano::EditRegion;
 
   EditRegion el{};
@@ -71,6 +65,66 @@ static int debug_thread(MainThreadArgument *ptr){
   
   MessageBox( NULL,static_cast<std::wstring>( el ).c_str()  , TEXT("メッセージキャプション" ), MB_OK );
   return (ptr->result = EXIT_SUCCESS);
+}
+
+static int debug_thread_entrypoint(MainThreadArgument *ptr){
+  assert( ptr );
+  if(! ptr ){
+    return EXIT_FAILURE;
+  }
+
+  // TODO DebugWindow を作らないといけない
+  
+  std::thread app_thread( []( MainThreadArgument* ptr ){
+                            application_thread( ptr );
+                          } , ptr );
+  const HANDLE app_thread_handle =  app_thread.native_handle();
+  for( ;; ){
+    std::array<HANDLE ,1 > handles = { app_thread_handle };
+    static_assert( (std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS -1 ),
+                   "(std::tuple_size<decltype(handles)::value) < (MAXIMUM_WAIT_OBJECTS -1 )" );
+    DWORD const dw = MsgWaitForMultipleObjects( std::tuple_size<decltype( handles )>::value , handles.data() ,
+                                                FALSE , INFINITE , QS_ALLINPUT );
+    switch( dw ){
+    case WAIT_OBJECT_0:
+      {
+        HWND debugWindow = getDebugWindowHandle();
+        if( debugWindow ){
+          VERIFY( ::DestroyWindow( debugWindow ) );
+          for(;;){
+            MSG msg = {0};
+            switch( GetMessage( &msg ,NULL , 0 ,0  ) ){
+            case -1:
+            case 0:
+              goto end_of_message_loop;
+            default:
+              VERIFY(TranslateMessage( &msg ));
+              VERIFY(DispatchMessage( &msg ));
+              break;
+            }
+          }
+          goto end_of_message_loop;
+        }
+        goto end_of_message_loop;
+      }
+      continue;
+    case (WAIT_OBJECT_0+std::tuple_size<decltype( handles ) >::value):
+      for( MSG msg = {0}; PeekMessage(&msg , NULL , 0 ,0 , PM_REMOVE ) ; msg = {0} ){
+        if( WM_QUIT == msg.message ){
+          goto end_of_message_loop;
+        }
+        VERIFY(TranslateMessage( &msg ));
+        VERIFY(DispatchMessage( &msg ));
+      }
+      continue;
+    default:
+      continue;
+    }
+  }
+ end_of_message_loop:
+  ;
+  app_thread.join();
+  return ptr->result;
 }
 
 
@@ -147,7 +201,7 @@ int main(int,char*[])
                              assert( S_OK == hr );
                              if( S_OK == hr ){
                                CoUninit coUninit{};
-                               return debug_thread(arg);
+                               return debug_thread_entrypoint(arg);
                              }
                              return 3;
                            } , &mainThreadArgument };
