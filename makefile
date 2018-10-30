@@ -1,24 +1,27 @@
 TARGET_VERSION=_WIN32_WINNT_WIN7
-CXXOPT=-nologo -EHsc -W4 -WX -O2 -Zi -GS -MDd -Zc:wchar_t -Zc:forScope \
+CXXOPT=-nologo -EHsc -W4 -WX -O2 -Zi -GS -MDd -Zc:wchar_t -Zc:forScope -Yuwinapi.h\
 	-DWINVER=$(TARGET_VERSION) -D_WIN32_WINNT=$(TARGET_VERSION) \
 	-DWIN32_LEAN_AND_MEAN=1 -DUNICODE=1 -D_UNICODE=1 -DNOMINMAX=1 \
 	-DDEBUG=1
 
-.cpp.obj:
-	$(CXX) -c $(CXXOPT) $*.cpp
+.cpp.obj::
+	$(CXX) -c $(CXXOPT) $<
 .obj.exe:
-	$(CXX) $(CXXOPT) $** -link -DEBUG
+	$(CXX) $(CXXOPT) /Fe:$@ $** -link -DEBUG
 
 VC_PDBFILE=vc140.pdb
 all_TARGET=example.exe
-example_OBJS=example.obj debug_window.obj agano.obj
+example_OBJS=example.obj winapi.obj debug_window.obj agano.obj
 
-clean_TARGET=$(all_TARGET) $(all_TARGET:.exe=.pdb) $(all_TARGET:.exe=.ilk) $(example_OBJS)
+clean_TARGET=$(all_TARGET) $(all_TARGET:.exe=.pdb) $(all_TARGET:.exe=.ilk) winapi.pch $(example_OBJS)
 
-all: $(all_TARGET)
+all: winapi.obj $(all_TARGET)
 	@-gtags
 
 example.exe: $(example_OBJS) 
+
+winapi.obj: winapi.cpp winapi.h
+	$(CXX) -c $(CXXOPT) -Ycwinapi.h $*.cpp
 
 example.obj: example.cpp agano.h whReserved.h whDllFunction.hxx debug_window.h
 debug_window.obj: debug_window.cpp debug_window.h

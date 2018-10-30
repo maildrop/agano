@@ -1,14 +1,13 @@
-﻿#include <tchar.h>
-#include <Windows.h>
-#include <commctrl.h>
-#include <wrl.h>
+﻿#include "winapi.h"
+
 #include <memory.h>
 
 #include <iostream>
-#include <locale>
 #include <array>
 #include <atomic>
 #include <thread>
+#include <functional>
+#include <algorithm>
 
 #include <cassert>
 #include <cstdint>
@@ -17,18 +16,6 @@
 #include "whReserved.h"
 #include "whDllFunction.hxx"
 #include "debug_window.h"
-
-#pragma comment( lib , "kernel32.lib" )
-#pragma comment( lib , "advapi32.lib" )
-#pragma comment( lib , "ole32.lib" )
-#pragma comment( lib , "user32.lib" )
-#pragma comment( lib , "gdi32.lib" )
-#pragma comment( lib , "Comctl32.lib" )
-#pragma comment( lib , "DbgHelp.lib" )
-
-#pragma comment( linker , "\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0'    \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #if !defined( VERIFY )
 #if defined( NDEBUG )
@@ -39,11 +26,11 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif /* !defined( VERIFY ) */
 
 struct MainThreadArgument{
+  HINSTANCE hInstance;
   int result;
 };
 
-
-static int application_thread( MainThreadArgument *ptr )
+static int application_thread( MainThreadArgument * const ptr )
 {
   assert( ptr );
   using agano::EditRegion;
@@ -67,13 +54,16 @@ static int application_thread( MainThreadArgument *ptr )
   return (ptr->result = EXIT_SUCCESS);
 }
 
-static int debug_thread_entrypoint(MainThreadArgument *ptr){
+static int debug_thread_entrypoint(MainThreadArgument * const ptr)
+{
   assert( ptr );
   if(! ptr ){
     return EXIT_FAILURE;
   }
 
   // TODO DebugWindow を作らないといけない
+  
+
   
   std::thread app_thread( []( MainThreadArgument* ptr ){
                             application_thread( ptr );
@@ -126,7 +116,6 @@ static int debug_thread_entrypoint(MainThreadArgument *ptr){
   app_thread.join();
   return ptr->result;
 }
-
 
 int main(int,char*[])
 {
@@ -195,7 +184,11 @@ int main(int,char*[])
     }
   }
   
-  MainThreadArgument mainThreadArgument{};
+  MainThreadArgument mainThreadArgument{
+    static_cast<HINSTANCE>(GetModuleHandle( NULL )),
+      0,
+      };
+  
   std::thread main_thread{ [](MainThreadArgument* arg)->int{
                              HRESULT const hr = CoInitializeEx( NULL , COINIT_APARTMENTTHREADED );
                              assert( S_OK == hr );

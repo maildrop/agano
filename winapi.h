@@ -24,6 +24,7 @@
 
 #if defined( __cplusplus )
 #include <cassert>
+#include <locale>
 #else /* defined( __cplusplus ) */
 #include <assert.h>
 #endif /* defined( __cplusplus ) */

@@ -1,9 +1,7 @@
-﻿#include <tchar.h>
-#include <Windows.h>
+﻿#include "winapi.h"
+
 #include <thread>
 #include "debug_window.h"
-
-
 
 namespace debug {
   enum{
@@ -63,6 +61,9 @@ void bootstrap_debug_console( std::thread& application_thread )
   return;
 }
 
+/**
+   デバッグウィンドウの参照を返す
+ */
 static std::atomic<HWND>& debug::implement::getDebugWindowHandleImpl()
 {
   static std::atomic<HWND> debugWindowHandle{nullptr};
@@ -74,3 +75,59 @@ HWND getDebugWindowHandle()
   HWND hWnd = debug::implement::getDebugWindowHandleImpl().load();
   return hWnd;
 }
+
+static LRESULT debugWindowProc( HWND hWnd , UINT msg , WPARAM wParam , LPARAM lParam )
+{
+  return ::DefWindowProc( hWnd , msg , wParam , lParam );
+}
+
+struct WindowClassAtomRAII{
+  
+  struct Init{
+    ATOM operator()(HINSTANCE hInstance) const {
+      WNDCLASSEX wcx =
+        {
+         sizeof( WNDCLASSEX ),
+         CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW ,
+         debugWindowProc,
+         0,
+         0,
+         hInstance,
+         NULL,
+         ::LoadCursor( NULL , IDC_ARROW ) , // Cursor 
+         (HBRUSH) GetStockObject( WHITE_BRUSH ),
+         NULL,
+         TEXT("whDebugConsole"),
+         NULL 
+        };
+      return RegisterClassEx( &wcx );
+    }
+  };
+  
+  const ATOM atom;
+  const HINSTANCE hInstance;
+  WindowClassAtomRAII() = delete;
+  WindowClassAtomRAII(WindowClassAtomRAII&) = delete;
+  WindowClassAtomRAII(WindowClassAtomRAII&&) = delete;
+  explicit WindowClassAtomRAII(HINSTANCE hInstance)
+    :atom(Init{}(hInstance)),hInstance( hInstance )
+  {}
+
+  WindowClassAtomRAII& operator=( WindowClassAtomRAII& ) = delete;
+  WindowClassAtomRAII&& operator=( WindowClassAtomRAII&& ) = delete;
+
+  explicit operator ATOM() const {
+    return atom;
+  }
+
+  explicit operator LPCTSTR() const {
+    return reinterpret_cast<LPCTSTR>( atom ) ;
+  }
+  
+  ~WindowClassAtomRAII(){
+    UnregisterClass( (LPCWSTR)(atom) , hInstance);
+  }
+};
+
+static WindowClassAtomRAII debugWindowAtom{ GetModuleHandle( NULL ) };
+

@@ -10,6 +10,10 @@
 #define EXTERN_C 
 #endif /* defined( __cplusplus ) */
 
+/**
+   デバッグウィンドウは、アプリケーション内で一つだけである。
+   デバッグウィンドウのハンドルを取得する。デバッグウィンドウが無い場合はNULL が戻る
+ */
 EXTERN_C HWND getDebugWindowHandle();
 
 #if defined( __cplusplus )

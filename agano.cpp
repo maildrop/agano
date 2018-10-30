@@ -1,5 +1,4 @@
-﻿#include <TCHAR.h>
-#include <Windows.h>
+﻿#include "winapi.h"
 
 #include <iostream>
 #include <sstream>
