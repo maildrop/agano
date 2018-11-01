@@ -1,13 +1,11 @@
 ﻿#include "winapi.h"
 
 #include "debug_window.h"
+#include <array>
 
 namespace debug {
   enum{
        RESERVED = 0,
-  };
-  enum{
-       PWM_DEBUG_LOG = (WM_APP + 1),
   };
   
   namespace implement{
@@ -46,23 +44,15 @@ namespace debug {
   };
   
 };
-#define TRACEER( log_level , log_message ) do{ \
+#define TRACEER( log_level , log_message ) do{                          \
     debug::log::trace( debug::log::trace_gen( log_level , __FILE__ , __LINE__ , log_message  ) ) ; \
   }while( false )
 
 
-void bootstrap_debug_console( std::thread& application_thread )
-{
-  HANDLE const app_thread_handle = application_thread.native_handle();
-
-  (void)( app_thread_handle );
-  
-  return;
-}
 
 /**
    デバッグウィンドウの参照を返す
- */
+*/
 static std::atomic<HWND>& debug::implement::getDebugWindowHandleImpl()
 {
   static std::atomic<HWND> debugWindowHandle{nullptr};
@@ -81,25 +71,23 @@ static LRESULT debugWindowProc( HWND hWnd , UINT msg , WPARAM wParam , LPARAM lP
 }
 
 struct WindowClassAtomRAII{
-  
   struct Init{
     ATOM operator()(HINSTANCE hInstance) const {
-      WNDCLASSEX wcx =
-        {
-         sizeof( WNDCLASSEX ),
-         CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW ,
-         debugWindowProc,
-         0,
-         0,
-         hInstance,
-         NULL,
-         ::LoadCursor( NULL , IDC_ARROW ) , // Cursor 
-         (HBRUSH) GetStockObject( WHITE_BRUSH ),
-         NULL,
-         TEXT("whDebugConsole"),
-         NULL 
+      const WNDCLASSEX wcx =
+        { sizeof( WNDCLASSEX ),                   // cbSize 
+          CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW ,  // style
+          debugWindowProc,                        // lpfnWndProc
+          0,                                      // cbClsExtra
+          0,                                      // cbWndExtra
+          hInstance,                              // hInstance
+          NULL,                                   // hIcon
+          ::LoadCursor( NULL , IDC_ARROW ) ,      // hCursor
+          (HBRUSH) GetStockObject( WHITE_BRUSH ), // hbrBackground
+          NULL,                                   // lpszMenuName
+          TEXT("whDebugConsole" ),                // lpszClassName 
+          NULL                                    // hIconSm 
         };
-      return RegisterClassEx( &wcx );
+      return ::RegisterClassEx( &wcx );
     }
   };
   
@@ -109,7 +97,7 @@ struct WindowClassAtomRAII{
   WindowClassAtomRAII(WindowClassAtomRAII&) = delete;
   WindowClassAtomRAII(WindowClassAtomRAII&&) = delete;
   explicit WindowClassAtomRAII(HINSTANCE hInstance)
-    :atom(Init{}(hInstance)),hInstance( hInstance )
+    :atom( Init{}(hInstance) ), hInstance( hInstance )
   {}
 
   WindowClassAtomRAII& operator=( WindowClassAtomRAII& ) = delete;
@@ -128,5 +116,73 @@ struct WindowClassAtomRAII{
   }
 };
 
-static WindowClassAtomRAII debugWindowAtom{ GetModuleHandle( NULL ) };
+void bootstrap_debug_console( std::thread& application_thread )
+{
+  HINSTANCE hInstance = GetModuleHandle( NULL );
+  WindowClassAtomRAII debugWindowAtom{ hInstance};
+
+  static_cast<ATOM>( debugWindowAtom );
+  HWND debugWindowHandle =
+    CreateWindowEx( WS_EX_OVERLAPPEDWINDOW,
+                    static_cast<LPCTSTR>( debugWindowAtom ),
+                    TEXT("DebugConsole") ,
+                    WS_VISIBLE | WS_OVERLAPPEDWINDOW ,
+                    CW_USEDEFAULT , CW_USEDEFAULT ,
+                    CW_USEDEFAULT , CW_USEDEFAULT ,
+                    NULL ,
+                    NULL,
+                    hInstance ,
+                    nullptr );
+  VERIFY( NULL != debugWindowHandle );
+
+  if( debugWindowHandle ){
+    debug::implement::getDebugWindowHandleImpl().store( debugWindowHandle );
+    HANDLE const app_thread_handle = application_thread.native_handle();
+    for( ;; ){
+      std::array<HANDLE ,1 > handles = { app_thread_handle };
+      static_assert( (std::tuple_size<decltype(handles)>::value) < (MAXIMUM_WAIT_OBJECTS -1 ),
+                     "(std::tuple_size<decltype(handles)::value) < (MAXIMUM_WAIT_OBJECTS -1 )" );
+      DWORD const dw = MsgWaitForMultipleObjects( std::tuple_size<decltype( handles )>::value , handles.data() ,
+                                                  FALSE , INFINITE , QS_ALLINPUT );
+      switch( dw ){
+      case WAIT_OBJECT_0:
+        {
+          HWND debugWindow = getDebugWindowHandle();
+          if( debugWindow ){
+            VERIFY( ::DestroyWindow( debugWindow ) );
+            for(;;){
+              MSG msg = {0};
+              switch( GetMessage( &msg ,NULL , 0 ,0  ) ){
+              case -1:
+              case 0:
+                goto end_of_message_loop;
+              default:
+                VERIFY(TranslateMessage( &msg ));
+                VERIFY(DispatchMessage( &msg ));
+                break;
+              }
+            }
+            goto end_of_message_loop;
+          }
+          goto end_of_message_loop;
+        }
+        continue;
+      case (WAIT_OBJECT_0+std::tuple_size<decltype( handles ) >::value):
+        for( MSG msg = {0}; PeekMessage(&msg , NULL , 0 ,0 , PM_REMOVE ) ; msg = {0} ){
+          if( WM_QUIT == msg.message ){
+            goto end_of_message_loop;
+          }
+          VERIFY(TranslateMessage( &msg ));
+          VERIFY(DispatchMessage( &msg ));
+        }
+        continue;
+      default:
+        continue;
+      }
+    }
+  end_of_message_loop:
+    debug::implement::getDebugWindowHandleImpl().store( NULL );
+  }
+  return;
+}
 

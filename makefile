@@ -29,6 +29,7 @@ example.exe: $(example_OBJS)
 
 winapi.obj: winapi.cpp winapi.h
 	$(CXX) -c $(CXXOPT) -Ycwinapi.h $*.cpp
+winapi.h: private_window_message.h
 
 example.obj: example.cpp agano.h whReserved.h whDllFunction.hxx debug_window.h
 debug_window.obj: debug_window.cpp debug_window.h

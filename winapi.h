@@ -60,4 +60,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif /* defined( NDEBUG ) */
 #endif /* !defined( VERIFY ) */
 
+
+#include "private_window_message.h"
+
 #endif /* !defined( WINAPI_H_HEADER_GUARD_8B594DCD_238B_4DC4_AE71_F322674CF51A )*/

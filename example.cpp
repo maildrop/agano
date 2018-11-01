@@ -64,6 +64,7 @@ static int debug_thread_entrypoint(MainThreadArgument * const ptr)
   std::thread app_thread( []( MainThreadArgument* ptr ){
                             application_thread( ptr );
                           } , ptr );
+  
   const HANDLE app_thread_handle =  app_thread.native_handle();
   for( ;; ){
     std::array<HANDLE ,1 > handles = { app_thread_handle };
