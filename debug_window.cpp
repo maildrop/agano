@@ -4,6 +4,7 @@
 #include <array>
 
 namespace debug {
+
   enum{
        RESERVED = 0,
   };
